@@ -1,0 +1,12 @@
+{
+  "models": [
+    {
+      "name": "first",
+      "description": "ok",
+      "fileUrl": "/uploads/1751307159527-balloons.glb",
+      "qrCodeUrl": "/qr-codes/qr-model_1.png",
+      "id": "model_1",
+      "createdAt": "2025-06-30T18:12:39.530Z"
+    }
+  ]
+}

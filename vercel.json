@@ -1,0 +1,17 @@
+{
+  "functions": {
+    "pages/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/api/static/uploads/$1"
+    },
+    {
+      "source": "/qr-codes/(.*)",
+      "destination": "/api/static/qr-codes/$1"
+    }
+  ]
+}
