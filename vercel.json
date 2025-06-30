@@ -13,5 +13,16 @@
       "source": "/qr-codes/(.*)",
       "destination": "/api/static/qr-codes/$1"
     }
+  ],
+  "headers": [
+    {
+      "source": "/api/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 }

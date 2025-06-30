@@ -64,23 +64,43 @@ export default function ARViewerPage() {
   }, [])
 
   const initializeAR = () => {
-    if (!model) return
+    if (!model || typeof window === 'undefined') return
 
-    // Initialize AR.js scene
-    const scene = document.querySelector('a-scene')
-    if (scene) {
-      // Add the 3D model to the AR scene
-      const modelEntity = document.createElement('a-entity')
-      modelEntity.setAttribute('gltf-model', model.fileUrl)
-      modelEntity.setAttribute('scale', '0.5 0.5 0.5')
-      modelEntity.setAttribute('position', '0 0 -2')
-      modelEntity.setAttribute('rotation', '0 0 0')
-      
-      const marker = document.querySelector('a-marker')
-      if (marker) {
-        marker.appendChild(modelEntity)
-      }
-    }
+    const container = document.getElementById('ar-scene-container')
+    if (!container) return
+
+    // Create AR scene dynamically
+    const scene = document.createElement('a-scene')
+    scene.setAttribute('embedded', '')
+    scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;')
+    scene.style.width = '100%'
+    scene.style.height = '100%'
+
+    // Create camera
+    const camera = document.createElement('a-entity')
+    camera.setAttribute('camera', '')
+    scene.appendChild(camera)
+
+    // Create marker
+    const marker = document.createElement('a-marker')
+    marker.setAttribute('preset', 'hiro')
+    marker.setAttribute('raycaster', 'objects: .clickable')
+    marker.setAttribute('emitevents', 'true')
+    marker.setAttribute('cursor', 'fuse: false; rayOrigin: mouse;')
+
+    // Create 3D model entity
+    const modelEntity = document.createElement('a-entity')
+    modelEntity.setAttribute('gltf-model', model.fileUrl)
+    modelEntity.setAttribute('scale', '0.5 0.5 0.5')
+    modelEntity.setAttribute('position', '0 0 0')
+    modelEntity.setAttribute('rotation', '0 0 0')
+
+    marker.appendChild(modelEntity)
+    scene.appendChild(marker)
+
+    // Clear container and add scene
+    container.innerHTML = ''
+    container.appendChild(scene)
   }
 
   if (loading) {
@@ -136,19 +156,12 @@ export default function ARViewerPage() {
 
       <div className="relative w-full h-screen overflow-hidden">
         {/* AR Scene */}
-        <a-scene
-          embedded
-          arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        <div
+          id="ar-scene-container"
           style={{ width: '100%', height: '100%' }}
         >
-          {/* Camera */}
-          <a-entity camera></a-entity>
-          
-          {/* Marker - This is where the 3D model will appear */}
-          <a-marker preset="hiro" raycaster="objects: .clickable" emitevents="true" cursor="fuse: false; rayOrigin: mouse;">
-            {/* 3D Model will be added here by JavaScript */}
-          </a-marker>
-        </a-scene>
+          {/* AR Scene will be dynamically created here */}
+        </div>
 
         {/* UI Overlay */}
         <div className="absolute top-0 left-0 right-0 z-50 bg-black bg-opacity-50 text-white p-4">

@@ -19,6 +19,14 @@ function ModelViewer({ url }: { url: string }) {
   return <primitive object={scene} />
 }
 
+// Preload the model for better performance
+useGLTF.preload = (url: string) => {
+  // Only preload if URL is valid
+  if (url && (url.startsWith('http') || url.startsWith('/'))) {
+    return useGLTF(url)
+  }
+}
+
 function Loader() {
   const { progress } = useProgress()
   return (

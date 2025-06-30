@@ -3,6 +3,7 @@ import formidable from 'formidable'
 import fs from 'fs'
 import path from 'path'
 import QRCode from 'qrcode'
+import { supabase } from '../../lib/supabaseClient'
 import { addModel, updateModel } from '../../lib/storage'
 
 // Create directories if they don't exist
@@ -40,18 +41,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!name || !file) return res.status(400).json({ error: 'Missing name or file' })
 
-    // ✅ Move file to public directory
     const fileName = `${Date.now()}-${file.originalFilename}`
-    const publicFilePath = path.join(uploadsDir, fileName)
+    let fileUrl: string
 
-    // Copy file to public directory
-    fs.copyFileSync(file.filepath, publicFilePath)
+    // Check if we're in production (Vercel) or development
+    const isProduction = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    if (isProduction) {
+      // ✅ Production: Upload to Supabase
+      console.log('Uploading to Supabase storage...')
+      const fileBuffer = fs.readFileSync(file.filepath)
+
+      const { error: uploadError } = await supabase.storage
+        .from('models')
+        .upload(fileName, fileBuffer, {
+          contentType: file.mimetype || 'model/gltf-binary'
+        })
+
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError)
+        return res.status(500).json({ error: uploadError.message })
+      }
+
+      const { data: publicUrlData } = supabase.storage.from('models').getPublicUrl(fileName)
+      fileUrl = publicUrlData.publicUrl
+      console.log('File uploaded to Supabase:', fileUrl)
+    } else {
+      // ✅ Development: Save locally
+      const publicFilePath = path.join(uploadsDir, fileName)
+      fs.copyFileSync(file.filepath, publicFilePath)
+      fileUrl = `/uploads/${fileName}`
+      console.log('File saved locally:', fileUrl)
+    }
 
     // Clean up temp file
     fs.unlinkSync(file.filepath)
-
-    const fileUrl = `/uploads/${fileName}`
-    console.log('File saved locally:', fileUrl)
 
     // ✅ Create model record
     const model = addModel({
@@ -76,14 +100,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       errorCorrectionLevel: 'H'  // High error correction for better scanning
     })
 
-    // ✅ Save QR code to public directory
+    // ✅ Save QR code
     const qrCodeBuffer = Buffer.from(qrCodeDataUrl.split(',')[1], 'base64')
     const qrCodeFileName = `qr-${model.id}.png`
-    const qrCodePath = path.join(qrCodesDir, qrCodeFileName)
+    let qrCodeUrl: string
 
-    fs.writeFileSync(qrCodePath, qrCodeBuffer)
+    if (isProduction) {
+      // ✅ Production: Upload QR code to Supabase
+      const { error: qrUploadError } = await supabase.storage
+        .from('qr-codes')
+        .upload(qrCodeFileName, qrCodeBuffer, {
+          contentType: 'image/png'
+        })
 
-    const qrCodeUrl = `/qr-codes/${qrCodeFileName}`
+      if (!qrUploadError) {
+        const { data: qrPublicUrlData } = supabase.storage.from('qr-codes').getPublicUrl(qrCodeFileName)
+        qrCodeUrl = qrPublicUrlData.publicUrl
+      } else {
+        console.error('QR code upload error:', qrUploadError)
+        qrCodeUrl = qrCodeDataUrl // Fallback to data URL
+      }
+    } else {
+      // ✅ Development: Save QR code locally
+      const qrCodePath = path.join(qrCodesDir, qrCodeFileName)
+      fs.writeFileSync(qrCodePath, qrCodeBuffer)
+      qrCodeUrl = `/qr-codes/${qrCodeFileName}`
+    }
 
     console.log('QR code saved:', qrCodeUrl)
 
